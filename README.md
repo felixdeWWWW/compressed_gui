@@ -18,7 +18,7 @@ mkdir build && cd build
 cmake ..
 
 cmake --build .
-
+```
 ## Contributors
 [Felix Wagner](https://github.com/felixdeWWWW/)
 [...](https://github.com/rhombus19)
