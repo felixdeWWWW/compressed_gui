@@ -6,14 +6,34 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <turbojpeg.h> // needs to be set up
+#include <turbojpeg.h>
+#include <cmath>
+#include <cmath>
 
-class Encoder
+// Berechne PSNR zwischen zwei RGB-Bildern
+double computePSNR(const unsigned char* original, const unsigned char* decoded, int width, int height) {
+    double mse = 0.0;
+    int totalPixels = width * height * 3;
+
+    for (int i = 0; i < totalPixels; ++i) {
+        int diff = static_cast<int>(original[i]) - static_cast<int>(decoded[i]);
+        mse += diff * diff;
+    }
+
+    mse /= totalPixels;
+
+    if (mse == 0) return INFINITY; 
+
+    double psnr = 10.0 * std::log10((255.0 * 255.0) / mse);
+    return psnr;
+}
+
+class Encoder 
 {
 private:
     const char* path_in;
     const char* path_out;
-    int width, height, channels;
+	int width, height, channels;
     unsigned char* data;
 public:
 
@@ -23,13 +43,25 @@ public:
         data = stbi_load(path_in, &width, &height, &channels, 3);
         if (!data) {
             std::cerr << "Failed to load image\n";
-            throw - 1;
+            throw -1;
         }
         std::cout << "Image loaded: " << width << "x" << height << ", channels: " << 3 << std::endl;
     }
 
-    bool jpeg_compress(int quality)
+    ~Encoder() 
     {
+        if (data) {
+            stbi_image_free(data);
+        }
+    }
+
+    int getWidth() { return this->width; }
+    int getHeight() { return this->height; }
+    int getChannels() { return this->channels; }
+    unsigned char* getData() const { return this->data; }
+
+	bool jpeg_compress(int quality) 
+	{
         tjhandle compressor = tjInitCompress();
         if (!compressor) {
             std::cerr << "Failed to initialize TurboJPEG compressor\n";
@@ -47,7 +79,6 @@ public:
             TJSAMP_444, quality, TJFLAG_FASTDCT
         );
 
-        stbi_image_free(data);
         tjDestroy(compressor);
 
         if (ret != 0) {
@@ -69,7 +100,7 @@ public:
 
         std::cout << "Successfully compressed to " << path_out << "\n";
         return true;
-    }
+	}
 };
 
 class Decoder
@@ -78,14 +109,19 @@ private:
     const char* path_in;
     const char* path_out;
     int width, height, jpegSubsamp, jpegColorspace;
-    unsigned char* data;
+    std::vector<unsigned char> rgbBuffer;
 public:
 
     Decoder(const char* path_in, const char* path_out)
         : path_in(path_in), path_out(path_out)
     { }
 
-    bool jpeg_decompress()
+    int getWidth() { return this->width; }
+    int getHeight() { return this->height; }
+    const unsigned char* getRGBData() const {
+        return rgbBuffer.data();
+    }
+	bool jpeg_decompress() 
     {
         std::ifstream inFile(path_in, std::ios::binary | std::ios::ate);
         if (!inFile) {
@@ -110,7 +146,7 @@ public:
             return false;
         }
 
-        std::vector<unsigned char> rgbBuffer(width * height * 3);
+        rgbBuffer.resize(width * height * 3);
 
         if (tjDecompress2(
             decompressor,
@@ -131,17 +167,59 @@ public:
     }
 };
 
-int main() {
+
+double calculatePSNR (const unsigned char* original, const unsigned char* compressed, int width, int height, int channels, int depth) 
+{
+    double mse = 0.0;
+    int max = 2 ^ depth;
+
+    int size = width * height * channels;
+    for (int i = 0; i < size; ++i) {
+        int diff = original[i] - compressed[i];
+        mse += diff * diff;
+    }
+
+    mse /= size;
+    if (mse == 0) return INFINITY;
+
+    double psnr = 10.0 * log10((max * max) / mse); 
+    return psnr;
+}
+
+int main() 
+{
     try
     {
         Encoder encoder("test.png", "output.jpg");
+
         if (!encoder.jpeg_compress(85)) {
             std::cerr << "Compression failed\n";
         }
+
         Decoder decoder("output.jpg", "egal.png");
         if (!decoder.jpeg_decompress()) {
             std::cerr << "Compression failed\n";
+            return 1;
         }
+
+        int w, h, c;
+        unsigned char* originalData = stbi_load("test.png", &w, &h, &c, 3);
+        if (!originalData) {
+            std::cerr << "Failed to reload original image\n";
+            return 1;
+        }
+
+        if (w != decoder.getWidth() || h != decoder.getHeight()) {
+            std::cerr << "Image size mismatch!\n";
+            stbi_image_free(originalData);
+            return 1;
+        }
+
+        double psnr = computePSNR(originalData, decoder.getRGBData(), w, h);
+        std::cout << "PSNR: " << psnr << " dB\n";
+
+        stbi_image_free(originalData);
+
         std::cout << "encode and decode works!" << std::endl;
     }
     catch (int num)
