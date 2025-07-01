@@ -1,6 +1,7 @@
 build/
 .external/
 *.heic
+.vscode/
 
 # Prerequisites
 *.d
