@@ -40,9 +40,7 @@ add_executable(heic_demo #WIN32  <-----
 2. Die Kompilierung wurde auf WSL mit Windows als Kompilierungsziel auf mehreren Rechnern getestet. Andere Kombinationen von Quell- und Zielbetriebssystemen wurden nicht getestet und erfordern möglicherweise Änderungen an der CMakeLists.txt
 
 ## Codedokumentation
-### 1. gui.h
-Bietet die Grundstruktur für die UI.
-### 2. heic.h
+### 1. heic.h
 Diese Header-Datei bietet eine C++-Implementierung zur Komprimierung und Dekomprimierung von Bildern im HEIC-Format.
 Die HEIC-Kodierung basiert auf libheif, einer modernen C-Bibliothek zur Handhabung von HEIC/HEIF-Dateien, die wiederum auf HEVC (H.265) aufbaut. Für die Bildvorverarbeitung und Ausgabe werden stb_image und stb_image_write verwendet.
 #### HeicEncoder: 
@@ -57,7 +55,7 @@ Zur Steuerung des Ablaufs erlaubt die Funktion optionale Parameter:
 - Der Pfad zur CSV-Datei
 - Eine Liste gewünschter Qualitätsstufen
 - Die Option, temporäre HEIC- und PNG-Dateien nach dem Testlauf zu behalten oder zu löschen (praktisch zur Fehleranalyse oder Weiterverarbeitung)
-### 3. jpg.h
+### 2. jpg.h
 Die Datei bietet zwei zentralen Komponenten:
 Die Klasse JpgEncoder ist für die JPEG-Kompression zuständig. 
 Beim Laden eines Bildes über stb_image wird es mit vier Kanälen (RGBA) eingelesen. Um die Transparenz sinnvoll in ein RGB-JPEG zu überführen, 
@@ -72,12 +70,12 @@ PSNR-Wert zwischen Original und dekomprimiertem Bild berechnet – ein Maß für
 komprimierten Datei in Byte ermittelt. Die Ergebnisse (Qualität, PSNR, Dateigröße) werden gesammelt und am Ende in eine CSV-Datei geschrieben. 
 Optional kann gesteuert werden, ob temporäre JPEG-Dateien während des Vorgangs behalten oder gelöscht werden sollen.
 
-### 4. helpers.h
+### 3. helpers.h
 Beherbergt eine Methode: computePSNR(), die zwei Bilder (Original und dekodiert) vergleicht, welche als flache Arrays
 von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadratischen Fehler (MSE)
 über alle Farbkanäle hinweg und leitet daraus den PSNR-Wert in Dezibel (dB) ab.
 
-### 5. gui.h
+### 4. gui.h
 `gui.h` packt die gesamte Oberfläche in eine einzige Funktion `run_gui()`. Sie ruft drei kleine Fenster auf – für HEIC-Encode/Decode, JPEG-Encode/Decode und den PSNR-Sweep – und hält sie in einer Schleife am Leben, bis der Nutzer das Hauptfenster schließt.
 
 #### Warum ImGui?
