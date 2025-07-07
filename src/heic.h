@@ -178,20 +178,26 @@ struct HeicQualityResult {
 // Evaluate compression quality sweep
 // Encode image at multiple quality levels, decode, compare PSNR, and save CSV
 // ----------------------------------------------------------------------------
-inline bool evaluateHeicQualitySweep(const std::string& image_path,
+inline bool evaluateHeicQualitySweep(
+    const std::string& image_path,
     const std::string& csv_path = "heic_quality.csv",
     bool keep_temp_files = false,
-    const std::vector<int>& qualities = { 0,5,10,20,30,40,50,60,70,80,90,100 })
+    const std::vector<int>& qualities = {0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100})
 {
-    // Load original image as reference for PSNR comparison
+    // ---------------------------------------------------------------------
+    // 1. Load reference image (original)
+    // ---------------------------------------------------------------------
     int ref_w, ref_h, ref_comp;
-    unsigned char* reference = stbi_load(image_path.c_str(), &ref_w, &ref_h, &ref_comp, 3);
+    unsigned char* reference =
+        stbi_load(image_path.c_str(), &ref_w, &ref_h, &ref_comp, 3 /*force RGB*/);
     if (!reference) {
         std::cerr << "(HEIC SWEEP) Could not load reference image: " << image_path << '\n';
         return false;
     }
 
-    // Create output CSV
+    // ---------------------------------------------------------------------
+    // 2. Open results CSV
+    // ---------------------------------------------------------------------
     std::ofstream csv(csv_path, std::ios::trunc);
     if (!csv) {
         std::cerr << "(HEIC SWEEP) Unable to open CSV for writing: " << csv_path << '\n';
@@ -200,63 +206,84 @@ inline bool evaluateHeicQualitySweep(const std::string& image_path,
     }
     csv << "quality,psnr,size_bytes\n";
 
-    const auto temp_dir = std::filesystem::temp_directory_path();
+    // ---------------------------------------------------------------------
+    // 3. Decide where to place the intermediate HEIC / PNG files
+    //    * When keep_temp_files == true  ➜ same directory as the source image
+    //    * When keep_temp_files == false ➜ system temporary directory (and later removed)
+    // ---------------------------------------------------------------------
+    const std::filesystem::path img_path(image_path);
+    const std::filesystem::path base_dir = keep_temp_files
+                                           ? img_path.parent_path()
+                                           : std::filesystem::temp_directory_path();
+    const std::string stem = img_path.stem().string();
 
-    // Loop over quality settings
+    // ---------------------------------------------------------------------
+    // 4. Iterate over quality settings
+    // ---------------------------------------------------------------------
     for (int q : qualities) {
-        const std::string encoded_path = (temp_dir / ("heic_q" + std::to_string(q) + ".heic")).string();
-        const std::string decoded_path = (temp_dir / ("heic_q" + std::to_string(q) + ".png")).string();
+        const std::filesystem::path encoded_path =
+            base_dir / (stem + std::string("_q") + std::to_string(q) + ".heic");
+        const std::filesystem::path decoded_path =
+            base_dir / (stem + std::string("_q") + std::to_string(q) + ".png");
 
-        // Encode image
-        HeicEncoder encoder(image_path, encoded_path);
+        // ---- Encode ------------------------------------------------------
+        HeicEncoder encoder(image_path, encoded_path.string());
         if (!encoder.encode(q)) {
             std::cerr << "(HEIC SWEEP) Encoding failed at quality=" << q << '\n';
             continue;
         }
 
-        // Decode back to PNG
-        HeicDecoder decoder(encoded_path, decoded_path);
+        // ---- Decode ------------------------------------------------------
+        HeicDecoder decoder(encoded_path.string(), decoded_path.string());
         if (!decoder.decode()) {
             std::cerr << "(HEIC SWEEP) Decoding failed at quality=" << q << '\n';
             continue;
         }
 
-        // Load decoded image
+        // ---- Load decoded PNG for PSNR ----------------------------------
         int dec_w, dec_h, dec_comp;
-        unsigned char* decoded = stbi_load(decoded_path.c_str(), &dec_w, &dec_h, &dec_comp, 3);
+        unsigned char* decoded =
+            stbi_load(decoded_path.string().c_str(), &dec_w, &dec_h, &dec_comp, 3);
         if (!decoded) {
             std::cerr << "(HEIC SWEEP) Failed to load decoded PNG at quality=" << q << '\n';
             continue;
         }
 
-        // Check image size match
         if (dec_w != ref_w || dec_h != ref_h) {
             std::cerr << "(HEIC SWEEP) Dimension mismatch at quality=" << q << '\n';
             stbi_image_free(decoded);
             continue;
         }
 
-        // Calculate PSNR and get output file size
+        // ---- Metrics -----------------------------------------------------
         const double psnr_db = computePSNR(reference, decoded, ref_w, ref_h);
         const std::uintmax_t bytes = std::filesystem::file_size(encoded_path);
 
-        // Write result to CSV
         csv << q << ',' << std::fixed << std::setprecision(4) << psnr_db << ',' << bytes << '\n';
-
         stbi_image_free(decoded);
 
-        // Optionally remove temporary files
+        // ---- Clean‑up decoded PNG ---------------------------------------
+        // PNG is only needed for quality measurement, never persisted
+        std::error_code ec;
+        std::filesystem::remove(decoded_path, ec);
+
+        // ---- Optionally clean‑up HEIC ------------------------------------
         if (!keep_temp_files) {
-            std::error_code ec;
             std::filesystem::remove(encoded_path, ec);
-            std::filesystem::remove(decoded_path, ec);
         }
     }
 
-    // Cleanup
+    // ---------------------------------------------------------------------
+    // 5. Finalise
+    // ---------------------------------------------------------------------
     stbi_image_free(reference);
     csv.close();
+
     std::cout << "(HEIC SWEEP) Results written to " << csv_path << '\n';
+    if (keep_temp_files) {
+        std::cout << "(HEIC SWEEP) Compressed HEIC files saved in " << base_dir << '\n';
+    }
+
     return true;
 }
 

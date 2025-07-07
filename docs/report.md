@@ -48,14 +48,73 @@ von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadr
 ## Nutzerhandbuch
 
 ### Installation
-- Roman
-```
+1. WSL (Windows Subsystem Linux) Installieren
+2. Build Umgebung einrichten
+    ```bash
+    sudo apt update
+    sudo apt install build-essential cmake ninja-build git \
+                    g++-mingw-w64-x86-64 \
+                    pkg-config autoconf automake libtool
+    ```
 
-```
+3. Repository klonen, aus den Source bauen (mit Debugging)
+    ```bash
+    git clone https://github.com/felixdeWWWW/compressed_gui.git
+    cd compressed_gui
+
+    cmake -B build -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake \
+        -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build -j
+    ```
 ### Nutzeroberfläche
--Roman
-## Ergebnisse für ein Beispiel
--Roman
+`gui.h` packt die gesamte Oberfläche in eine einzige Funktion `run_gui()`. Sie ruft drei kleine Fenster auf – für HEIC-Encode/Decode, JPEG-Encode/Decode und den PSNR-Sweep – und hält sie in einer Schleife am Leben, bis der Nutzer das Hauptfenster schließt.
+
+#### Warum ImGui?
+
+* **Sofort benutzbar**: ImGui ist ein “Immediate Mode-GUI”. Alle Widgets werden jedes Frame neu beschrieben. Kein kompliziertes Ereignis­system, keine XML-Lay­outs – einfach in C++ pro Frame Buttons, Slider, Checkboxen aufrufen, fertig.
+* **Debug-Charakter**: Perfekt für Tools, bei denen Bedien­barkeit wichtiger ist als Corporate-Design.
+* **Einfach erweiterbar**: Ein neues Codec-Fenster? Zwei Zeilen Code.
+
+#### Warum GLFW (oder SDL) und OpenGL?
+
+* **GLFW / SDL** liefern nur das nackte **Fenster + Eingaben** (Tastatur, Maus, ggf. Gamepad) und initialisieren den Grafik-Kontext für uns. Sie kümmern sich um die OS-Details, damit wir plattform­neutral bleiben.
+* **OpenGL** ist der Renderer, den ImGui in diesem Projekt benutzt. ImGui selbst zeichnet nur Dreiecke – wie sie auf den Bildschirm kommen, übernimmt der Backend-Treiber (hier: ImGui-OpenGL3).
+* Wer lieber DirectX oder Vulkan nutzt, wirft einfach den Backend-Code um; die UI-Logik bleibt identisch.
+
+---
+
+#### Code
+
+* **Initialisierung**
+
+  1. GLFW starten, Fenster (960 × 600) anlegen, V-Sync einschalten.
+  2. ImGui-Kontext anlegen, Backends für GLFW + OpenGL registrieren.
+
+* **UI-Status**
+  Pfad-Strings, Quality-Slider, Checkboxen – alles als lokale Variablen im Funktionskörper. Keine globalen Stati, kein dynamischer Speicher.
+
+* **Drei Fenster**
+  *Fenster 1* steuert HEIC, *Fenster 2* JPEG, *Fenster 3* den PSNR-Sweep. Jede Aktion ruft direkt den passenden Encoder, Decoder oder Sweep-Helfer auf. Lief es gut, wird eine grüne „Success!“-Meldung angezeigt.
+![](./pictures/ui_screenshot.png)
+* **Render-Loop**
+  GLFW-Events abfragen → ImGui-Frame bauen → Widgets zeichnen → Buffer tauschen. Läuft bis Fenster zu.
+
+* **Aufräumen**
+  Backends schließen, ImGui-Kontext zerstören, GLFW terminieren.
+
+---
+
+### Verbesserungen
+
+* **Multithreading**
+  Aktuell blockiert jeder Encode-Vorgang den UI-Thread. Ein Worker-Thread, aufgerufen per `std::async` oder Thread-Pool, würde die GUI flüssig halten und teure Kodierungen im Hintergrund rechnen.
+
+* **Loading-Bar / Spinner**
+  Statt eines statischen „Success!“-Textes sollte ein Fortschritts-Widget erscheinen, solange eine Kodierung läuft, und sich nach Abschluss in grünem Erfolgstext oder roter Fehlermeldung auflösen.
+
+Diese zwei Änderungen allein würden die Benutzer­freundlichkeit deutlich steigern, ohne den Code stark zu verkomplizieren.
+
 ## Literatur Recherche
 1.  Quelle: „Comprehensive Image Quality Assessment (IQA) of JPEG, WebP, HEIF and AVIF Formats “ 
 Die Studie zeigt, dass JPEG zwar weit verbreitet ist, aber bei höheren Komprimierungsstufen 

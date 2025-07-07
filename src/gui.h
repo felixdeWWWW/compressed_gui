@@ -60,6 +60,7 @@ inline int run_gui()
     int  heic_quality  = 90;
     bool heic_encode   = true;
     bool heic_done_ok  = false;
+    bool heic_show_msg = false;   // whether to show the green banner
 
     // JPEG
     char jpg_in[512]   = "";
@@ -67,6 +68,7 @@ inline int run_gui()
     int  jpg_quality   = 90;
     bool jpg_encode    = true;
     bool jpg_done_ok   = false;
+    bool jpg_show_msg  = false;
 
     // PSNR sweep
     char psnr_img[512] = "";
@@ -74,6 +76,7 @@ inline int run_gui()
     bool psnr_is_jpeg  = true;
     bool psnr_done_ok  = false;
     bool keep_tmp_files = false;
+    bool psnr_show_msg = false;
 
     // Allow user to reposition the three windows manually, but start them side‑by‑side
     bool first_frame = true;
@@ -102,7 +105,8 @@ inline int run_gui()
 
         if (ImGui::Button(heic_encode ? "Encode" : "Decode"))
         {
-            heic_done_ok = false;
+            heic_show_msg = false;           
+            heic_done_ok  = false;
             if (std::strlen(heic_in) != 0)
             {
                 // If output not provided, derive it
@@ -126,11 +130,11 @@ inline int run_gui()
                     heic_done_ok = false;
                 }
             }
+            heic_show_msg = heic_done_ok;
         }
 
-        if (heic_done_ok)
+        if (heic_show_msg)
             ImGui::TextColored(ImVec4(0,1,0,1), "Success! Saved to %s", heic_out);
-
         ImGui::End();
 
         // ---------------- JPEG WINDOW ----------------
@@ -149,7 +153,8 @@ inline int run_gui()
 
         if (ImGui::Button(jpg_encode ? "Encode" : "Decode"))
         {
-            jpg_done_ok = false;
+            jpg_show_msg = false;
+            jpg_done_ok  = false;
             if (std::strlen(jpg_in) != 0)
             {
                 if (std::strlen(jpg_out) == 0)
@@ -172,9 +177,10 @@ inline int run_gui()
                     jpg_done_ok = false;
                 }
             }
+            jpg_show_msg = jpg_done_ok;
         }
 
-        if (jpg_done_ok)
+        if (jpg_show_msg)
             ImGui::TextColored(ImVec4(0,1,0,1), "Success! Saved to %s", jpg_out);
 
         ImGui::End();
@@ -184,7 +190,7 @@ inline int run_gui()
             ImGui::SetNextWindowPos(ImVec2(640, 10));
             ImGui::SetNextWindowSize(ImVec2(300, 240));
         }
-        ImGui::Begin("PSNR Sweep → CSV");
+        ImGui::Begin("PSNR Sweep to CSV");
 
         ImGui::InputText("Image Path",  psnr_img, IM_ARRAYSIZE(psnr_img));
         ImGui::InputText("CSV Output", psnr_csv, IM_ARRAYSIZE(psnr_csv));
@@ -194,11 +200,12 @@ inline int run_gui()
         if (ImGui::RadioButton("JPEG", psnr_is_jpeg)) psnr_is_jpeg = true;
         ImGui::SameLine();
         if (ImGui::RadioButton("HEIC", !psnr_is_jpeg)) psnr_is_jpeg = false;
-        ImGui::Checkbox("Kepp temp files", &keep_tmp_files);
+        ImGui::Checkbox("Keep temp files", &keep_tmp_files);
 
         if (ImGui::Button("Run Sweep"))
         {
-            psnr_done_ok = false;
+            psnr_show_msg = false;
+            psnr_done_ok  = false;
             if (std::strlen(psnr_img) != 0)
             {
                 if (std::strlen(psnr_csv) == 0)
@@ -216,9 +223,10 @@ inline int run_gui()
                     psnr_done_ok = false;
                 }
             }
+            psnr_show_msg = psnr_done_ok;
         }
 
-        if (psnr_done_ok)
+        if (psnr_show_msg)
             ImGui::TextColored(ImVec4(0,1,0,1), "CSV written to %s", psnr_csv);
 
         ImGui::End();
