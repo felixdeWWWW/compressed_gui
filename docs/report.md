@@ -7,6 +7,38 @@ Dieses Projekt beschäftigt sich mit der Visualisierung der Qualitätsunterschie
 Benötigt wird für jeden Kompressionsalgorithmus der PSNR-Wert pro Qualitätswert und Dateigröße. Dementsprechend bietet das hier entstandene Programm
 Klassen zur JPEG-Komprimierung und HEIC-Komprimierung, eine UI zur Bedienung diesee Klassen, eine csv-Ausgabe der benötigten Daten. Ein Jupiter-Notebook
 ermöglicht es diese Daten einzulesen und zu plotten.
+## Nutzerhandbuch
+
+### Installation
+1. WSL (Windows Subsystem Linux) Installieren
+2. Build Umgebung einrichten
+    ```bash
+    sudo apt update
+    sudo apt install build-essential cmake ninja-build git \
+                    g++-mingw-w64-x86-64 \
+                    pkg-config autoconf automake libtool
+    ```
+
+3. Repository klonen, aus den Source bauen (mit Debugging)
+    ```bash
+    git clone https://github.com/felixdeWWWW/compressed_gui.git
+    cd compressed_gui
+
+    cmake -B build -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake \
+        -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build -j
+    ```
+### Anmerkungen
+1. Standardmäßig kompilieren wir die GUI App mit einer Debug-Konsole, um mögliche Warnungen/Errors zu sehen. Wenn Sie dies deaktivieren möchten, entfernen Sie das Kommentarzeichen '#' in dieser Zeile in CMakeLists.txt:
+```CMake
+# -------- Demo App --------
+add_executable(heic_demo #WIN32  <-----
+    src/main.cpp
+    ${IMGUI_CORE_SOURCES}
+```
+2. Die Kompilierung wurde auf WSL mit Windows als Kompilierungsziel auf mehreren Rechnern getestet. Andere Kombinationen von Quell- und Zielbetriebssystemen wurden nicht getestet und erfordern möglicherweise Änderungen an der CMakeLists.txt
+
 ## Codedokumentation
 ### 1. gui.h
 Bietet die Grundstruktur für die UI.
@@ -45,29 +77,7 @@ Beherbergt eine Methode: computePSNR(), die zwei Bilder (Original und dekodiert)
 von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadratischen Fehler (MSE)
 über alle Farbkanäle hinweg und leitet daraus den PSNR-Wert in Dezibel (dB) ab.
 
-## Nutzerhandbuch
-
-### Installation
-1. WSL (Windows Subsystem Linux) Installieren
-2. Build Umgebung einrichten
-    ```bash
-    sudo apt update
-    sudo apt install build-essential cmake ninja-build git \
-                    g++-mingw-w64-x86-64 \
-                    pkg-config autoconf automake libtool
-    ```
-
-3. Repository klonen, aus den Source bauen (mit Debugging)
-    ```bash
-    git clone https://github.com/felixdeWWWW/compressed_gui.git
-    cd compressed_gui
-
-    cmake -B build -G Ninja \
-        -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake \
-        -DCMAKE_BUILD_TYPE=Debug
-    cmake --build build -j
-    ```
-### Nutzeroberfläche
+### 5. gui.h
 `gui.h` packt die gesamte Oberfläche in eine einzige Funktion `run_gui()`. Sie ruft drei kleine Fenster auf – für HEIC-Encode/Decode, JPEG-Encode/Decode und den PSNR-Sweep – und hält sie in einer Schleife am Leben, bis der Nutzer das Hauptfenster schließt.
 
 #### Warum ImGui?
@@ -81,8 +91,6 @@ von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadr
 * **GLFW / SDL** liefern nur das nackte **Fenster + Eingaben** (Tastatur, Maus, ggf. Gamepad) und initialisieren den Grafik-Kontext für uns. Sie kümmern sich um die OS-Details, damit wir plattform­neutral bleiben.
 * **OpenGL** ist der Renderer, den ImGui in diesem Projekt benutzt. ImGui selbst zeichnet nur Dreiecke – wie sie auf den Bildschirm kommen, übernimmt der Backend-Treiber (hier: ImGui-OpenGL3).
 * Wer lieber DirectX oder Vulkan nutzt, wirft einfach den Backend-Code um; die UI-Logik bleibt identisch.
-
----
 
 #### Code
 
@@ -103,8 +111,6 @@ von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadr
 * **Aufräumen**
   Backends schließen, ImGui-Kontext zerstören, GLFW terminieren.
 
----
-
 ### Verbesserungen
 
 * **Multithreading**
@@ -112,8 +118,6 @@ von RGB-Werten (je 8 Bit pro Kanal) vorliegen. Sie berechnet den mittleren quadr
 
 * **Loading-Bar / Spinner**
   Statt eines statischen „Success!“-Textes sollte ein Fortschritts-Widget erscheinen, solange eine Kodierung läuft, und sich nach Abschluss in grünem Erfolgstext oder roter Fehlermeldung auflösen.
-
-Diese zwei Änderungen allein würden die Benutzer­freundlichkeit deutlich steigern, ohne den Code stark zu verkomplizieren.
 
 ## Literatur Recherche
 1.  Quelle: „Comprehensive Image Quality Assessment (IQA) of JPEG, WebP, HEIF and AVIF Formats “ 
