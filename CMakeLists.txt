@@ -124,7 +124,7 @@ ExternalProject_Add(libjpeg_turbo
   GIT_TAG         3.0.2
   CMAKE_ARGS
     -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE_ABS}
-    -DCMAKE_SYSTEM_PROCESSOR=x86_64          # <── NEW (set to i686, armv7, etc. if needed)
+    -DCMAKE_SYSTEM_PROCESSOR=x86_64          
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DENABLE_SHARED=OFF
     -DENABLE_STATIC=ON
@@ -156,7 +156,7 @@ set(IMGUI_CORE_SOURCES
 add_executable(heic_demo #WIN32
     src/main.cpp
     ${IMGUI_CORE_SOURCES}
-    src/stb_image_impl.cpp              # <-- NEW   (one-and-only implementation)
+    src/stb_image_impl.cpp             
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
@@ -181,7 +181,7 @@ target_link_libraries(heic_demo PRIVATE
     glfw
     heif_static          # libheif needs both encoder & decoder symbols
     x265_static
-    de265_static         # <── NEW
+    de265_static         
     turbojpeg_static
     opengl32)
 
